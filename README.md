@@ -7,7 +7,7 @@ Aplikasi web manajemen user Hotspot, PPPoE, Voucher, dan RADIUS terpusat berbasi
 Dukungan OS: **Debian 11/12** & **Ubuntu 22.04/24.04 LTS** (VPS x86_64 maupun Armbian ARM64).
 
 ```bash
-git clone git@github.com:adhyhimlu-hue/cloud-mikhmon-radius.git
+git clone https://github.com/adhyhimlu-hue/cloud-mikhmon-radius.git
 cd cloud-mikhmon-radius
 sudo bash install.sh
 ```
@@ -88,7 +88,7 @@ Mendukung **Debian 11/12** & **Ubuntu 22.04/24.04 LTS** (baik arsitektur VPS `x8
 
 1. **Clone repositori dari GitHub dan masuk ke direktori proyek:**
    ```bash
-   git clone https://github.com/USERNAME_ANDA/cloud-mikhmon-radius.git
+   git clone https://github.com/adhyhimlu-hue/cloud-mikhmon-radius.git
    cd cloud-mikhmon-radius
    ```
 
