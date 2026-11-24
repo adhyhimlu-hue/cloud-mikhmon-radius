@@ -39,11 +39,6 @@ set use-radius=yes accounting=yes interim-update=5m
 /ip firewall filter
 add chain=input protocol=udp dst-port=3799 src-address=10.200.0.1 action=accept comment="Allow RADIUS CoA from Cloud"
 add chain=input protocol=udp dst-port=3799 action=drop comment="Drop Unauthorized CoA"
-```
-
-# ⚡ Cloud-Mikhmon RADIUS (MikroTik RouterOS v7)
-
-Aplikasi web manajemen user **Hotspot**, **PPPoE**, **Voucher**, dan **RADIUS** terpusat berbasis Cloud dengan antarmuka ringan, cepat, serta praktis menyerupai **Mikhmon**. Ditenagai oleh **FreeRADIUS 3 + MariaDB + RADIUS Incoming CoA/Disconnect** yang kompatibel penuh dengan **MikroTik RouterOS v7 (ROS 7)**.
 
 ---
 
