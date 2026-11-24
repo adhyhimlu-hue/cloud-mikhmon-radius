@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudMikhmon RADIUS v7</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+</head>
+<body class="bg-slate-100 text-slate-800 font-sans text-sm" x-data="mikhmonApp()" x-init="init()">
+    <!-- Login Modal jika belum ada token -->
+    <template x-if="!token">
+        <div class="min-h-screen flex items-center justify-center bg-slate-900 p-4">
+            <form @submit.prevent="login()" class="bg-white p-6 rounded shadow-lg w-full max-w-sm space-y-4">
+                <h1 class="text-lg font-bold text-slate-800 text-center">⚡ CLOUD-MIKHMON RADIUS</h1>
+                <div>
+                    <label class="block font-semibold mb-1">Email</label>
+                    <input type="email" x-model="loginForm.email" class="w-full border rounded p-2" required>
+                </div>
+                <div>
+                    <label class="block font-semibold mb-1">Password</label>
+                    <input type="password" x-model="loginForm.password" class="w-full border rounded p-2" required>
+                </div>
+                <button type="submit" class="w-full py-2 bg-sky-600 text-white font-bold rounded">Masuk</button>
+            </form>
+        </div>
+    </template>
+
+    <template x-if="token">
+        <div class="min-h-screen flex flex-col md:flex-row">
+            <aside class="w-full md:w-56 bg-slate-900 text-slate-200 flex-shrink-0">
+                <div class="p-4 bg-slate-950 font-bold text-base tracking-wide flex items-center justify-between">
+                    <span>⚡ CLOUD-MIKHMON</span>
+                    <span class="text-xs px-2 py-0.5 rounded bg-emerald-600 text-white" x-text="user.role"></span>
+                </div>
+                <nav class="p-2 space-y-1">
+                    <button @click="tab='dashboard'" :class="tab==='dashboard'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded">📊 Dashboard</button>
+                    <button @click="tab='generate'" :class="tab==='generate'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded">🎫 Generate Voucher</button>
+                    <button @click="tab='vouchers'; loadVouchers()" :class="tab==='vouchers'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded">🗂️ Users / Vouchers</button>
+                    <button @click="tab='sessions'; loadSessions()" :class="tab==='sessions'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded">🟢 Active Sessions</button>
+                    <button @click="tab='profiles'" :class="tab==='profiles'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded">⚙️ Profiles</button>
+                    <button @click="tab='reports'; loadReports()" :class="tab==='reports'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded">📈 Reports</button>
+                    <template x-if="user.role === 'admin'">
+                        <button @click="tab='nas'; loadNas()" :class="tab==='nas'?'bg-sky-600 text-white':'hover:bg-slate-800'" class="w-full text-left px-3 py-2 rounded text-amber-300">🔌 Router / NAS</button>
+                    </template>
+                    <button @click="logout()" class="w-full text-left px-3 py-2 rounded text-rose-400 hover:bg-slate-800">🚪 Logout</button>
+                </nav>
+            </aside>
+
+            <main class="flex-1 p-4 space-y-4">
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="bg-sky-600 text-white p-3 rounded shadow">
+                        <div class="text-xs opacity-80">Hotspot / PPP Aktif</div>
+                        <div class="text-2xl font-bold" x-text="stats.activeSessions + ' User'"></div>
+                    </div>
+                    <div class="bg-emerald-600 text-white p-3 rounded shadow">
+                        <div class="text-xs opacity-80">Voucher Terpakai</div>
+                        <div class="text-2xl font-bold" x-text="stats.soldVouchers + ' Vcr'"></div>
+                    </div>
+                    <div class="bg-amber-600 text-white p-3 rounded shadow">
+                        <div class="text-xs opacity-80">Total Pendapatan</div>
+                        <div class="text-2xl font-bold" x-text="'Rp ' + Number(stats.revenue).toLocaleString('id-ID')"></div>
+                    </div>
+                    <div class="bg-rose-600 text-white p-3 rounded shadow">
+                        <div class="text-xs opacity-80">Total Traffic Terpakai</div>
+                        <div class="text-2xl font-bold" x-text="stats.totalGb + ' GB'"></div>
+                    </div>
+                </div>
+
+                <div x-show="tab==='sessions' || tab==='dashboard'" class="bg-white rounded shadow p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-base">Sesi Aktif Real-Time (RADIUS Accounting)</h2>
+                        <button @click="loadSessions()" class="px-3 py-1 bg-slate-800 text-white rounded text-xs">↻ Refresh</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full border-collapse text-xs">
+                            <thead>
+                                <tr class="bg-slate-200 text-left">
+                                    <th class="p-2 border">Username</th>
+                                    <th class="p-2 border">Profil</th>
+                                    <th class="p-2 border">IP Address</th>
+                                    <th class="p-2 border">MAC Address</th>
+                                    <th class="p-2 border">Uptime</th>
+                                    <th class="p-2 border">Up / Down</th>
+                                    <th class="p-2 border">Total MB</th>
+                                    <th class="p-2 border text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="s in sessions" :key="s.radacctid">
+                                    <tr class="hover:bg-slate-50">
+                                        <td class="p-2 border font-mono font-bold" x-text="s.username"></td>
+                                        <td class="p-2 border" x-text="s.profile_name"></td>
+                                        <td class="p-2 border font-mono" x-text="s.ip_address"></td>
+                                        <td class="p-2 border font-mono" x-text="s.mac_address"></td>
+                                        <td class="p-2 border" x-text="formatDuration(s.uptime_sec)"></td>
+                                        <td class="p-2 border" x-text="formatBytes(s.upload_bytes) + ' / ' + formatBytes(s.download_bytes)"></td>
+                                        <td class="p-2 border font-bold" x-text="s.total_mb + ' MB'"></td>
+                                        <td class="p-2 border text-center">
+                                            <button @click="kickUser(s.username)" class="px-2 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded">Kick CoA</button>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div x-show="tab==='generate'" class="bg-white rounded shadow p-4 max-w-xl">
+                    <h2 class="font-bold text-base mb-3">Generate Batch Voucher RADIUS</h2>
+                    <form @submit.prevent="submitGenerate()" class="space-y-3">
+                        <div>
+                            <label class="block font-semibold mb-1">Profil Paket</label>
+                            <select x-model="genForm.profileId" class="w-full border rounded p-2" required>
+                                <template x-for="p in profiles" :key="p.id">
+                                    <option :value="p.id" x-text="`${p.display_name} (${p.rate_limit}) - Rp ${p.price}`"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold mb-1">Jumlah (Qty)</label>
+                                <input type="number" x-model="genForm.quantity" min="1" max="1000" class="w-full border rounded p-2" required>
+                            </div>
+                            <div>
+                                <label class="block font-semibold mb-1">Mode Login</label>
+                                <select x-model="genForm.authMode" class="w-full border rounded p-2">
+                                    <option value="same">Username = Password</option>
+                                    <option value="separate">Username & Password Terpisah</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block font-semibold mb-1">Prefix Kode</label>
+                                <input type="text" x-model="genForm.prefix" placeholder="Misal: VC-" class="w-full border rounded p-2">
+                            </div>
+                            <div>
+                                <label class="block font-semibold mb-1">Panjang Karakter</label>
+                                <input type="number" x-model="genForm.codeLength" min="4" max="12" class="w-full border rounded p-2">
+                            </div>
+                        </div>
+                        <button type="submit" class="w-full py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded">Generate & Buka Halaman Cetak</button>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </template>
+
+    <script>
+        function mikhmonApp() {
+            return {
+                token: localStorage.getItem('token') || '',
+                user: JSON.parse(localStorage.getItem('user') || '{"role":"reseller"}'),
+                tab: 'dashboard',
+                loginForm: { email: 'admin@cloudmikhmon.local', password: '' },
+                stats: { activeSessions: 0, soldVouchers: 0, revenue: 0, totalGb: 0 },
+                sessions: [],
+                profiles: [],
+                vouchers: [],
+                nasList: [],
+                genForm: { profileId: '', quantity: 20, authMode: 'same', prefix: '', codeLength: 6 },
+                headers() { return { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + this.token }; },
+                async init() {
+                    if (this.token) await Promise.all([this.loadStats(), this.loadSessions(), this.loadProfiles()]);
+                },
+                async login() {
+                    const r = await fetch('/api/v1/auth/login', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(this.loginForm)
+                    });
+                    const d = await r.json();
+                    if (r.ok) {
+                        this.token = d.token; this.user = d.user;
+                        localStorage.setItem('token', d.token);
+                        localStorage.setItem('user', JSON.stringify(d.user));
+                        await this.init();
+                    } else alert(d.error);
+                },
+                logout() {
+                    localStorage.clear(); this.token = '';
+                },
+                async loadStats() {
+                    const r = await fetch('/api/v1/dashboard/summary', { headers: this.headers() });
+                    if (r.ok) this.stats = await r.json();
+                },
+                async loadSessions() {
+                    const r = await fetch('/api/v1/sessions/active', { headers: this.headers() });
+                    if (r.ok) this.sessions = await r.json();
+                },
+                async loadProfiles() {
+                    const r = await fetch('/api/v1/profiles', { headers: this.headers() });
+                    if (r.ok) { this.profiles = await r.json(); if (this.profiles[0]) this.genForm.profileId = this.profiles[0].id; }
+                },
+                async loadVouchers() {
+                    const r = await fetch('/api/v1/vouchers', { headers: this.headers() });
+                    if (r.ok) this.vouchers = await r.json();
+                },
+                async loadNas() {
+                    const r = await fetch('/api/v1/nas', { headers: this.headers() });
+                    if (r.ok) this.nasList = await r.json();
+                },
+                async loadReports() {},
+                async kickUser(username) {
+                    if (!confirm(`Putus paksa sesi ${username}?`)) return;
+                    await fetch(`/api/v1/sessions/${username}/kick`, { method: 'POST', headers: this.headers() });
+                    await this.loadSessions();
+                },
+                async submitGenerate() {
+                    const r = await fetch('/api/v1/vouchers/generate', {
+                        method: 'POST', headers: this.headers(), body: JSON.stringify(this.genForm)
+                    });
+                    const res = await r.json();
+                    if (r.ok) {
+                        window.open(`/print.html?batchId=${res.data.batchId}&mode=grid`, '_blank');
+                    } else alert(res.error);
+                },
+                formatDuration(sec) {
+                    const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+                    return `${h}j ${m}m ${s}d`;
+                },
+                formatBytes(b) {
+                    return (b / 1048576).toFixed(1) + ' MB';
+                }
+            };
+        }
+    </script>
+</body>
+</html>
